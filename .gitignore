@@ -1,0 +1,11 @@
+# Spring Boot specific
+/target/
+/.idea/
+*.iml
+*.log
+/build/
+/data/
+
+# API Key and Sensitive Files
+src/main/resources/application.properties
+src/main/resources/application.yml

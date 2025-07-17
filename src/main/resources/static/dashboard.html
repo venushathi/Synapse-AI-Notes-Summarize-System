@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Synapse AI Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #E5E7EB;
+            overflow: hidden; /* Prevent scrollbars on body */
+        }
+
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .glass-sidebar {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-icon svg, .profile-icon svg, .logout-icon svg {
+            transition: transform 0.2s ease-out, color 0.2s ease-out;
+            color: #9ca3af;
+        }
+        .sidebar-icon:hover svg, .profile-icon:hover svg {
+            transform: scale(1.1);
+            color: #A78BFA;
+        }
+        .sidebar-icon.active svg {
+            color: #8B5CF6;
+        }
+        .logout-icon:hover svg {
+            transform: scale(1.1);
+            color: #f87171;
+        }
+
+        /* --- Note Card Styles (Redesigned with FIX) --- */
+        .note-card {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInSubtleAnimation 0.5s ease-out forwards;
+        }
+        .note-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            background: linear-gradient(145deg, #8B5CF6, #22D3EE) border-box;
+            -webkit-mask:
+                    linear-gradient(#fff 0 0) padding-box,
+                    linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            /* CRITICAL FIX: This prevents the hover effect from blocking mouse clicks */
+            pointer-events: none;
+        }
+        .note-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+        }
+        .note-card:hover::before {
+            opacity: 1;
+        }
+        .note-card-disappearing {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .category-badge {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .form-button {
+            background: linear-gradient(145deg, #8B5CF6, #6D28D9);
+            color: white;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+            border-radius: 25px;
+        }
+        .form-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 30px rgba(139, 92, 246, 0.5);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        .search-input {
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            color: #e5e7eb;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+            border-radius: 25px;
+        }
+        .search-input:focus {
+            border-color: #A78BFA;
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+            background-color: rgba(30, 41, 59, 0.8);
+            outline: none;
+        }
+
+        @keyframes fadeInSubtleAnimation {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .note-card { animation-delay: calc(var(--card-index) * 0.05s); }
+
+        .action-icon svg {
+            color: #9ca3af;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .action-icon:hover svg { transform: scale(1.15); }
+        .action-icon.edit:hover svg { color: #22D3EE; }
+        .action-icon.delete:hover svg { color: #f87171; }
+
+        .spinner {
+            border-top-color: #8B5CF6;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .modal-overlay {
+            background-color: rgba(10, 16, 31, 0.7);
+            backdrop-filter: blur(8px);
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-card {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(16px) saturate(150%);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .modal-overlay:not(.hidden) .modal-card {
+            transform: scale(1);
+            opacity: 1;
+        }
+        .modal-button-cancel {
+            background-color: rgba(55, 65, 81, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 25px; /* UPDATED */
+        }
+        .modal-button-cancel:hover {
+            background-color: rgba(71, 85, 105, 0.7);
+            border-color: rgba(100, 116, 139, 0.7);
+        }
+        .modal-button-delete {
+            background-color: #991b1b;
+            color: #fecaca;
+            border-radius: 25px; /* UPDATED */
+        }
+        .modal-button-delete:hover {
+            background-color: #b91c1c;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+<canvas id="stars-container"></canvas>
+
+<div class="flex h-screen overflow-hidden bg-black bg-opacity-10">
+    <aside class="w-20 md:w-24 glass-sidebar p-3 md:p-4 flex flex-col items-center flex-shrink-0">
+        <a href="/dashboard.html" class="block mb-8" title="Dashboard Home">
+            <svg class="w-10 h-10 md:w-12 md:h-12 text-purple-400 hover:text-purple-300 transition-colors" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 5C16.475 5 5 16.475 5 32C5 47.525 16.475 59 32 59C47.525 59 59 47.525 59 32C59 16.475 47.525 5 32 5Z" stroke="currentColor" stroke-width="3" stroke-miterlimit="10" stroke-opacity="0.6"/>
+                <path d="M24 24V40M40 24V40M20 32H44" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.8"/>
+            </svg>
+        </a>
+        <nav class="flex flex-col items-center space-y-6 flex-grow">
+            <a href="/dashboard.html" class="sidebar-icon active p-2 rounded-lg" title="Dashboard">
+                <svg class="w-6 h-6 md:w-7 md:h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6zM3.75 12h16.5" /></svg>
+            </a>
+            <a href="/subjects.html" class="sidebar-icon p-2 rounded-lg" title="Manage Subjects">
+                <svg class="w-6 h-6 md:w-7 md:h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6.226c0-1.032.842-1.875 1.875-1.875h12.75c1.033 0 1.875.842 1.875 1.875v3.55M5.25 14.25h13.5" /></svg>
+            </a>
+        </nav>
+        <div class="mt-auto flex flex-col items-center space-y-5 pb-2">
+            <a href="/profile.html" class="profile-icon p-2 block" title="Profile">
+                <svg class="w-7 h-7 md:w-8 md:h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </a>
+            <form id="logoutForm" action="/perform_logout" method="POST">
+                <button type="submit" class="logout-icon p-2 block" title="Logout">
+                    <svg class="w-7 h-7 md:w-8 md:h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto">
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-white">Dashboard</h1>
+                    <p id="welcomeMessage" class="text-slate-400 mt-1">Welcome back, loading user...</p>
+                </div>
+                <div class="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div class="relative flex-grow md:flex-grow-0 md:w-64 lg:w-80">
+                        <input type="search" id="searchInput" placeholder="Search notes..." class="search-input w-full py-2.5 pl-10 pr-4 rounded-full text-sm">
+                        <svg class="w-4 h-4 text-slate-500 absolute left-4 top-1/2 transform -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                    </div>
+                    <a href="/note-add.html" class="form-button font-semibold py-2.5 px-4 md:px-5 rounded-full text-sm flex items-center gap-1.5 whitespace-nowrap">
+                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        New Note
+                    </a>
+                </div>
+            </div>
+            <div class="mt-6 flex items-center gap-3">
+                <label for="categoryFilter" class="text-xs text-slate-400">Filter:</label>
+                <select id="categoryFilter" class="search-input text-xs rounded-full py-1 px-3 text-slate-300 focus:outline-none w-auto appearance-none">
+                    <option value="all">All Categories</option>
+                </select>
+                <div id="listLoadingSpinner" class="spinner w-5 h-5 rounded-full border-2 border-t-transparent hidden ml-2"></div>
+            </div>
+        </header>
+
+        <div id="notesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div id="emptyState" class="hidden text-center p-8 sm:col-span-2 lg:col-span-3 xl:col-span-4 border-2 border-dashed border-slate-700 rounded-2xl text-slate-500">
+                <h3 class="text-lg font-semibold text-slate-300">No Notes Found</h3>
+                <p class="mt-2 text-sm">Get started by creating a <a href="/note-add.html" class="font-semibold text-cyan-400 hover:text-cyan-300">new note</a>.</p>
+            </div>
+        </div>
+        <div id="errorMessageArea" class="mt-6 text-center text-red-400 hidden"></div>
+    </main>
+</div>
+
+<div id="deleteConfirmationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay hidden">
+    <div class="modal-card w-full max-w-md p-6 rounded-2xl">
+        <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50 mb-4">
+                <svg class="h-6 w-6 text-red-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium leading-6 text-white" id="modal-title">Delete Note</h3>
+            <div class="mt-2">
+                <p class="text-sm text-slate-400">Are you sure you want to delete this note? This action cannot be undone.</p>
+            </div>
+        </div>
+        <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+            <button type="button" id="confirmDeleteBtn" class="inline-flex w-full justify-center px-3 py-2 text-sm font-semibold shadow-sm modal-button-delete">Delete</button>
+            <button type="button" id="cancelDeleteBtn" class="mt-3 inline-flex w-full justify-center px-3 py-2 text-sm font-semibold shadow-sm sm:mt-0 modal-button-cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- SCRIPT SECTION RESTORED TO ORIGINAL WORKING LOGIC ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeDashboard();
+        initializeStarsAnimation();
+    });
+
+    // --- State and Element References ---
+    let noteToDelete = null;
+
+    const notesGridEl = document.getElementById('notesGrid');
+    const emptyStateEl = document.getElementById('emptyState');
+    const searchInputEl = document.getElementById('searchInput');
+    const categoryFilterEl = document.getElementById('categoryFilter');
+    const listLoadingSpinnerEl = document.getElementById('listLoadingSpinner');
+    const errorMessageAreaEl = document.getElementById('errorMessageArea');
+    const welcomeMessageEl = document.getElementById('welcomeMessage');
+    const deleteModalEl = document.getElementById('deleteConfirmationModal');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+    // --- Core Dashboard Functions ---
+    async function initializeDashboard() {
+        showLoadingState(true);
+        errorMessageAreaEl.classList.add('hidden');
+        errorMessageAreaEl.textContent = '';
+        try {
+            await Promise.all([
+                fetchAndRenderNotes(),
+                fetchAndRenderSubjects(),
+                fetchAndSetWelcomeMessage()
+            ]);
+        } catch (error) {
+            console.error("Error initializing dashboard:", error);
+            errorMessageAreaEl.textContent = `Error loading dashboard: ${error.message}. Please try refreshing.`;
+            errorMessageAreaEl.classList.remove('hidden');
+            renderNotes([]);
+        } finally {
+            showLoadingState(false);
+        }
+    }
+
+    async function fetchAndSetWelcomeMessage() {
+        try {
+            const response = await fetch('/api/user/me');
+            if(!response.ok) throw new Error('Could not fetch user info');
+            const user = await response.json();
+            welcomeMessageEl.textContent = `Welcome, ${user.name}!`;
+        } catch(e) {
+            console.error("Failed to fetch user's name:", e);
+            welcomeMessageEl.textContent = 'Welcome back!';
+        }
+    }
+
+    function showLoadingState(isLoading) {
+        if(listLoadingSpinnerEl) listLoadingSpinnerEl.classList.toggle('hidden', !isLoading);
+    }
+
+    async function fetchAndRenderNotes(subjectId = null, searchTerm = null) {
+        showLoadingState(true);
+        let url = '/api/notes';
+        const params = new URLSearchParams();
+        if (subjectId && subjectId !== 'all') params.append('subjectId', subjectId);
+        if (searchTerm && searchTerm.trim() !== '') params.append('searchTerm', searchTerm.trim());
+        if (params.toString()) url += `?${params.toString()}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to load notes.' }));
+                throw new Error(errorData.message);
+            }
+            const allNotesData = await response.json();
+            renderNotes(allNotesData);
+            errorMessageAreaEl.classList.add('hidden');
+        } catch (error) {
+            console.error("Error fetching notes:", error);
+            errorMessageAreaEl.textContent = `Error fetching notes: ${error.message}`;
+            errorMessageAreaEl.classList.remove('hidden');
+            renderNotes([]);
+        } finally {
+            showLoadingState(false);
+        }
+    }
+
+    async function fetchAndRenderSubjects() {
+        try {
+            const response = await fetch('/api/subjects');
+            if (!response.ok) throw new Error('Failed to load subjects.');
+            const allSubjectsData = await response.json();
+            populateCategoryFilter(allSubjectsData);
+        } catch (error) {
+            console.error("Error fetching subjects:", error);
+        }
+    }
+
+    function populateCategoryFilter(subjects) {
+        while (categoryFilterEl.options.length > 1) categoryFilterEl.remove(1);
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            categoryFilterEl.appendChild(option);
+        });
+    }
+
+    function renderNotes(notesToRender) {
+        notesGridEl.innerHTML = ''; // Clear the grid first
+        if (notesToRender.length === 0) {
+            notesGridEl.appendChild(emptyStateEl);
+            emptyStateEl.classList.remove('hidden');
+        } else {
+            emptyStateEl.classList.add('hidden');
+            notesToRender.forEach((note, index) => {
+                const noteCard = createNoteCard(note, index);
+                notesGridEl.appendChild(noteCard);
+            });
+        }
+    }
+
+    function createNoteCard(note, index) {
+        const card = document.createElement('div');
+        card.className = 'note-card p-5 flex flex-col';
+        card.style.setProperty('--card-index', index);
+        card.dataset.noteId = note.id;
+        const sanitize = (text) => text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+        const title = sanitize(note.title) || 'Untitled Note';
+        const summary = sanitize(note.summary) || (note.content ? sanitize(note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '')) : 'No content');
+        const categoryName = note.subject ? sanitize(note.subject.name) : 'Uncategorized';
+
+        card.innerHTML = `
+            <a href="/view-note.html?noteId=${note.id}" class="block hover:no-underline flex-grow">
+                <h3 class="text-md font-semibold text-slate-100 mb-1.5 truncate" title="${title}">${title}</h3>
+                <p class="text-slate-400 text-xs leading-relaxed mb-3 line-clamp-3">${summary}</p>
+            </a>
+            <div class="mt-auto pt-3">
+                <div class="flex justify-between items-center">
+                    <span class="category-badge text-xs font-medium px-2 py-1 rounded-full">${categoryName}</span>
+                    <div class="flex items-center space-x-2">
+                         <button class="action-icon edit p-1" title="Edit Note" data-action="edit">
+                            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                        </button>
+                        <button class="action-icon delete p-1" title="Delete Note" data-action="delete">
+                            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    // --- Event Listeners ---
+    searchInputEl.addEventListener('input', debounce(() => fetchAndRenderNotes(categoryFilterEl.value, searchInputEl.value), 350));
+    categoryFilterEl.addEventListener('change', () => fetchAndRenderNotes(categoryFilterEl.value, searchInputEl.value));
+
+    // RESTORED: Original event listener for note card actions
+    notesGridEl.addEventListener('click', function(event) {
+        const button = event.target.closest('button.action-icon');
+        if (!button) return;
+        const noteCard = button.closest('.note-card');
+        if (!noteCard) return;
+        const noteId = noteCard.dataset.noteId;
+        const action = button.dataset.action;
+        if (action === 'edit') {
+            window.location.href = `/note-add.html?noteId=${noteId}`;
+        } else if (action === 'delete') {
+            openDeleteConfirmation(noteId, noteCard);
+        }
+    });
+
+    cancelDeleteBtn.addEventListener('click', closeDeleteConfirmation);
+    confirmDeleteBtn.addEventListener('click', handleDeleteNote);
+
+    // --- Delete Logic with Custom Modal ---
+    function openDeleteConfirmation(noteId, noteCardElement) {
+        noteToDelete = { id: noteId, element: noteCardElement };
+        deleteModalEl.classList.remove('hidden');
+    }
+
+    function closeDeleteConfirmation() {
+        noteToDelete = null;
+        deleteModalEl.classList.add('hidden');
+    }
+
+    async function handleDeleteNote() {
+        if (!noteToDelete) return;
+        const { id, element } = noteToDelete;
+        element.classList.add('note-card-disappearing');
+        closeDeleteConfirmation();
+
+        try {
+            const response = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to delete note.');
+            }
+            setTimeout(() => {
+                element.remove();
+                if (notesGridEl.querySelectorAll('.note-card').length === 0) {
+                    emptyStateEl.classList.remove('hidden');
+                }
+            }, 300);
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+            element.classList.remove('note-card-disappearing');
+        }
+    }
+
+    // --- New "Digital Constellation" Background Script ---
+    function initializeStarsAnimation() {
+        const canvas = document.getElementById('stars-container');
+        if (!canvas || !canvas.getContext) return;
+
+        const ctx = canvas.getContext('2d');
+        let mouse = { x: null, y: null, radius: 150 };
+        let particles = [];
+        let animationFrameId;
+
+        function setCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.2;
+                this.speedY = (Math.random() - 0.5) * 0.2;
+                this.baseColor = 'rgba(167, 139, 250, 0.5)';
+            }
+            update() {
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+                this.x += this.speedX;
+                this.y += this.speedY;
+            }
+            draw() {
+                ctx.fillStyle = this.baseColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            let numberOfParticles = (canvas.width * canvas.height) / 12000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function connectParticles() {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let distance = Math.sqrt(Math.pow(particles[a].x - particles[b].x, 2) + Math.pow(particles[a].y - particles[b].y, 2));
+                    if (distance < 120) {
+                        opacityValue = 1 - (distance / 120);
+                        ctx.strokeStyle = `rgba(139, 92, 246, ${opacityValue * 0.5})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            if (mouse.x !== null && mouse.y !== null) {
+                for (let i = 0; i < particles.length; i++) {
+                    let distance = Math.sqrt(Math.pow(mouse.x - particles[i].x, 2) + Math.pow(mouse.y - particles[i].y, 2));
+                    if (distance < mouse.radius) {
+                        opacityValue = 1 - (distance / mouse.radius);
+                        ctx.strokeStyle = `rgba(34, 211, 238, ${opacityValue * 0.8})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(mouse.x, mouse.y);
+                        ctx.lineTo(particles[i].x, particles[i].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            connectParticles();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function initAnimation() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            setCanvasSize();
+            initParticles();
+            animate();
+        }
+
+        window.addEventListener('resize', initAnimation);
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        initAnimation();
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse AI Notes - Where Your Thoughts Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B1120; /* Slightly darker base */
+            color: #E5E7EB; /* Soft White */
+            overflow-x: hidden;
+        }
+
+        /* --- Preloader Styles --- */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0B1120;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+        #preloader.loaded {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .preloader-logo {
+            animation: pulse-logo 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-logo {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
+
+        /* --- Background Canvas --- */
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* --- Glassmorphism & Hover Effects (Corrected) --- */
+        .glass-card {
+            background: rgba(17, 24, 39, 0.55);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.0); /* Start with no shadow */
+        }
+
+        .glass-card:hover {
+            border-color: rgba(167, 139, 250, 0.4); /* Lighter purple border on hover */
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.25); /* Purple glow effect */
+        }
+
+        .hero-glass-card {
+            transition: all 0.2s ease-out; /* For mouse-tilt effect */
+        }
+
+        .cta-button {
+            background: linear-gradient(145deg, #8B5CF6, #6D28D9);
+            color: white;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+            transform: perspective(1px) translateZ(0);
+        }
+        .cta-button:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 0 45px rgba(139, 92, 246, 0.6);
+        }
+
+        .header-nav {
+            background: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon-wrapper {
+            background-color: rgba(139, 92, 246, 0.1);
+            color: #A78BFA;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+        .feature-card:hover .feature-icon-wrapper {
+            transform: scale(1.1) rotate(-5deg);
+            background-color: rgba(139, 92, 246, 0.2);
+        }
+
+        /* --- Scroll Animation Styles --- */
+        .animate-on-scroll {
+            opacity: 0;
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .fade-in-up { transform: translateY(40px); }
+        .zoom-in { transform: scale(0.9); }
+        .is-visible {
+            opacity: 1;
+            transform: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+<div id="preloader">
+    <svg class="w-16 h-16 text-cyan-400 preloader-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 5C16.475 5 5 16.475 5 32C5 47.525 16.475 59 32 59C47.525 59 59 47.525 59 32C59 16.475 47.525 5 32 5Z" stroke="currentColor" stroke-width="3" stroke-miterlimit="10" stroke-opacity="0.6"/><path d="M24 24V40M40 24V40M20 32H44" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.8"/><path d="M32 20C35.3137 20 38 22.6863 38 26C38 29.3137 35.3137 32 32 32C28.6863 32 26 29.3137 26 26C26 22.6863 28.6863 20 32 20Z" stroke="currentColor" stroke-width="2.5" stroke-opacity="0.7"/><path d="M32 32C35.3137 32 38 34.6863 38 38C38 41.3137 35.3137 44 32 44C28.6863 44 26 41.3137 26 38C26 34.6863 28.6863 32 32 32Z" stroke="currentColor" stroke-width="2.5" stroke-opacity="0.7"/><path d="M41.1429 22.8571C43.5238 25.2381 45 28.4762 45 32C45 35.5238 43.5238 38.7619 41.1429 41.1429" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-opacity="0.5"/><path d="M22.8571 41.1429C20.4762 38.7619 19 35.5238 19 32C19 28.4762 20.4762 25.2381 22.8571 22.8571" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-opacity="0.5"/></svg>
+</div>
+
+<canvas id="stars-container"></canvas>
+
+<header class="header-nav sticky top-0 z-50">
+    <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <a href="#" class="flex items-center space-x-2">
+            <span class="text-2xl font-bold text-purple-400">Synapse</span>
+            <span class="text-2xl font-semibold text-slate-200">Notes</span>
+        </a>
+        <div class="hidden md:flex items-center space-x-6">
+            <a href="#features" class="text-slate-300 hover:text-white transition-colors duration-300">Features</a>
+            <a href="#vision" class="text-slate-300 hover:text-white transition-colors duration-300">Vision</a>
+            <a href="/login.html" id="loginPageLink" class="font-semibold text-slate-800 bg-slate-200 hover:bg-white transition-colors px-5 py-2 rounded-lg text-sm">
+                Login / Sign Up
+            </a>
+        </div>
+        <div class="md:hidden">
+            <a href="/login.html" class="font-semibold text-slate-800 bg-slate-200 hover:bg-white transition-colors px-4 py-1.5 rounded-lg text-xs">Login</a>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <section class="min-h-screen flex items-center justify-center pt-16 pb-20 text-center" id="hero-section">
+        <div class="container mx-auto px-6">
+            <div class="glass-card hero-glass-card max-w-4xl mx-auto p-8 md:p-12 rounded-2xl animate-on-scroll" data-animation="fade-in-up" style="transform-style: preserve-3d;">
+                <h1 class="text-4xl md:text-6xl font-bold text-white leading-tight mb-4 animate-on-scroll" data-animation="fade-in-up" data-delay="100">
+                    Turn Your Notes Into Knowledge.
+                </h1>
+                <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-8 animate-on-scroll" data-animation="fade-in-up" data-delay="250">
+                    Synapse is a simple tool to help you make sense of your notes. It automatically summarizes and categorizes your information so you can learn faster.
+                </p>
+                <div id="messageArea" class="text-sm h-6 mb-4"></div>
+                <div class="animate-on-scroll" data-animation="fade-in-up" data-delay="400">
+                    <a href="/login.html" class="cta-button inline-block text-lg font-bold px-8 py-4 rounded-lg">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="py-24 bg-black bg-opacity-20">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16 animate-on-scroll" data-animation="fade-in-up">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">A Smarter Way to Study</h2>
+                <p class="text-lg text-slate-400">Tools designed to help you focus on what matters.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="glass-card feature-card p-8 rounded-2xl text-center animate-on-scroll" data-animation="fade-in-up" data-delay="0">
+                    <div class="feature-icon-wrapper w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.311a7.5 7.5 0 01-7.5 0c-1.255 0-2.443.29-3.5.832m14.5-3.991a7.5 7.5 0 00-7.5 0c-1.255 0-2.443.29-3.5.832m14.5-3.991c.389.197.75.424 1.088.682M5.088 17.182c.337-.258.699-.485 1.088-.682m11.836 0A12.015 12.015 0 0112 18c-2.095 0-4.04-.616-5.624-1.662M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM12 12.75a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Instant Summaries</h3>
+                    <p class="text-slate-400 leading-relaxed">Turn long documents into key points. Our tool reads the text so you can get the main ideas quickly.</p>
+                </div>
+                <div class="glass-card feature-card p-8 rounded-2xl text-center animate-on-scroll" data-animation="fade-in-up" data-delay="200">
+                    <div class="feature-icon-wrapper w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6.226c0-1.032.842-1.875 1.875-1.875h12.75c1.033 0 1.875.842 1.875 1.875v3.55M5.25 14.25h13.5" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Easy Organization</h3>
+                    <p class="text-slate-400 leading-relaxed">No more manual tagging. The app suggests the right category for your notes, keeping your work tidy.</p>
+                </div>
+                <div class="glass-card feature-card p-8 rounded-2xl text-center animate-on-scroll" data-animation="fade-in-up" data-delay="400">
+                    <div class="feature-icon-wrapper w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.472-2.472a3.375 3.375 0 00-4.773-4.773L4.5 12.173a3.375 3.375 0 004.773 4.773l2.146-2.146M12 18.75h.008v.008H12v-.008z" /></svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Connect Ideas</h3>
+                    <p class="text-slate-400 leading-relaxed">Find links between your notes that you didn't see before. Our tool helps you connect topics to form bigger ideas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="vision" class="py-24">
+        <div class="container mx-auto px-6 text-center max-w-3xl animate-on-scroll" data-animation="fade-in-up">
+            <p class="text-2xl md:text-3xl font-medium text-slate-300 leading-relaxed">"The goal is to turn data into information, and information into insight."</p>
+            <p class="mt-4 text-slate-400">- Carly Fiorina</p>
+        </div>
+    </section>
+
+</main>
+
+<footer class="border-t border-slate-800/50">
+    <div class="container mx-auto px-6 py-6 text-center text-slate-500">
+        <p>&copy; <span id="currentYear"></span> Synapse Notes. A Student Project.</p>
+    </div>
+</footer>
+
+<script>
+    // --- Static Content & Message Handling Script ---
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        const messageArea = document.getElementById('messageArea');
+        function displayStaticMessage(message, type = 'info') {
+            if (messageArea) {
+                messageArea.innerHTML = '';
+                const span = document.createElement('span');
+                span.textContent = message;
+                if (type === 'success') {
+                    span.className = 'text-green-400';
+                } else if (type === 'danger' || type === 'error') {
+                    span.className = 'text-red-500';
+                } else {
+                    span.className = 'text-slate-300';
+                }
+                messageArea.appendChild(span);
+                setTimeout(() => {
+                    if (messageArea) messageArea.innerHTML = '';
+                }, 4000);
+            }
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('error')) {
+            displayStaticMessage(decodeURIComponent(params.get('error')), 'danger');
+        } else if (params.has('logout') && params.get('logout') === 'true') {
+            displayStaticMessage('You have been logged out successfully.', 'success');
+        } else if (params.has('status_message') && params.has('status_type')) {
+            displayStaticMessage(decodeURIComponent(params.get('status_message')), params.get('status_type'));
+        }
+    });
+
+    // --- Animation Control Script ---
+    document.addEventListener("DOMContentLoaded", function() {
+        // Preloader
+        const preloader = document.getElementById('preloader');
+        window.addEventListener('load', () => {
+            if (preloader) {
+                preloader.classList.add('loaded');
+            }
+        });
+
+        // Scroll-triggered animations
+        const animatedElements = document.querySelectorAll('.animate-on-scroll');
+        if ("IntersectionObserver" in window) {
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const delay = entry.target.dataset.delay || 0;
+                        setTimeout(() => {
+                            entry.target.classList.add('is-visible');
+                        }, parseInt(delay, 10));
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            animatedElements.forEach(el => {
+                const animationType = el.dataset.animation || 'fade-in-up';
+                el.classList.add(animationType);
+                observer.observe(el);
+            });
+        } else {
+            animatedElements.forEach(el => {
+                el.classList.add('is-visible');
+            });
+        }
+
+        // Interactive Stars Background (Original Style)
+        const canvas = document.getElementById('stars-container');
+        if (canvas && canvas.getContext) {
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+
+            function setCanvasSize() {
+                canvas.width = window.innerWidth;
+                canvas.height = document.body.scrollHeight;
+            }
+
+            function createStars() {
+                stars = [];
+                let numStars = (window.innerWidth * canvas.height) / 8000;
+                for (let i = 0; i < numStars; i++) {
+                    stars.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        radius: Math.random() * 1.3 + 0.6,
+                        alpha: Math.random() * 0.6 + 0.4,
+                        vx: (Math.random() - 0.5) * 0.15,
+                        vy: (Math.random() - 0.5) * 0.15
+                    });
+                }
+            }
+
+            function drawStars() {
+                if (!ctx) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(224, 224, 240, ${star.alpha})`;
+                    ctx.fill();
+                });
+            }
+
+            function updateStars() {
+                stars.forEach(star => {
+                    star.x += star.vx;
+                    star.y += star.vy;
+
+                    if (star.x < 0 || star.x > canvas.width) star.vx *= -0.95;
+                    if (star.y < 0 || star.y > canvas.height) star.vy *= -0.95;
+
+                    star.alpha += (Math.random() -0.5) * 0.06;
+                    if(star.alpha < 0.2) star.alpha = 0.2;
+                    if(star.alpha > 0.9) star.alpha = 0.9;
+                });
+            }
+
+            let animationFrameId;
+            function animateStars() {
+                drawStars();
+                updateStars();
+                animationFrameId = requestAnimationFrame(animateStars);
+            }
+
+            function initStars() {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                setCanvasSize();
+                createStars();
+                animateStars();
+            }
+
+            window.addEventListener('resize', initStars);
+            window.addEventListener('load', initStars);
+        }
+
+        // Mouse-aware tilt effect for hero card
+        const heroCard = document.querySelector('.hero-glass-card');
+        if (heroCard) {
+            const heroSection = document.getElementById('hero-section');
+            heroSection.addEventListener('mousemove', (e) => {
+                const { clientX, clientY } = e;
+                const { width, height, left, top } = heroCard.getBoundingClientRect();
+                const x = clientX - left;
+                const y = clientY - top;
+                const rotateX = (y / height - 0.5) * -15;
+                const rotateY = (x / width - 0.5) * 15;
+                heroCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+            });
+            heroSection.addEventListener('mouseleave', () => {
+                heroCard.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
+            });
+        }
+    });
+</script>
+</body>
+</html>

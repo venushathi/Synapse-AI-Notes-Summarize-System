@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add/Edit Note - Synapse AI Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #E5E7EB;
+        }
+
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .main-content-area {
+            animation: fadeInPage 0.6s ease-out forwards;
+        }
+        @keyframes fadeInPage {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-container {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+        .form-container:hover {
+            border-color: rgba(167, 139, 250, 0.5);
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.25);
+        }
+
+        .form-input, .textarea-field, .select-field {
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            color: #e5e7eb;
+            transition: all 0.3s ease;
+            border-radius: 25px;
+        }
+        .form-input:focus, .textarea-field:focus, .select-field:focus {
+            border-color: #A78BFA;
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+            background-color: rgba(30, 41, 59, 0.8);
+            outline: none;
+        }
+        .textarea-field {
+            min-height: 150px;
+        }
+
+        .form-button {
+            background: linear-gradient(145deg, #8B5CF6, #6D28D9);
+            color: white;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+            border-radius: 25px;
+        }
+        .form-button:disabled {
+            background: #374151;
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+        .form-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 30px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-secondary {
+            background-color: rgba(55, 65, 81, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            transition: all 0.2s ease;
+            border-radius: 25px;
+        }
+        .btn-secondary:hover {
+            background-color: rgba(71, 85, 105, 0.7);
+            border-color: rgba(100, 116, 139, 0.7);
+        }
+        .btn-small {
+            padding-left: 0.75rem; padding-right: 0.75rem;
+            padding-top: 0.375rem; padding-bottom: 0.375rem;
+            font-size: 0.75rem;
+            border-radius: 20px;
+        }
+
+        .textarea-field::-webkit-scrollbar, .summary-display-area::-webkit-scrollbar { width: 6px; }
+        .textarea-field::-webkit-scrollbar-track, .summary-display-area::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); }
+        .textarea-field::-webkit-scrollbar-thumb, .summary-display-area::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        .textarea-field::-webkit-scrollbar-thumb:hover, .summary-display-area::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .label-text { color: #9ca3af; }
+
+        .ai-button {
+            background-color: rgba(30, 58, 138, 0.4);
+            border: 1px solid rgba(96, 165, 250, 0.4);
+            color: #bfdbfe;
+            border-radius: 25px;
+        }
+        .ai-button:hover:not(:disabled) {
+            background-color: rgba(30, 64, 175, 0.6);
+            color: #dbeafe;
+        }
+        .ai-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .spinner {
+            border-top-color: #c7d2fe;
+            animation: spin 1s linear infinite;
+            width: 1rem; height: 1rem; border-width: 2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-full-page {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999;
+        }
+        .loading-full-page .spinner {
+            width: 2.5rem; height: 2.5rem; border-width: 4px; border-top-color: #8B5CF6;
+        }
+
+        .summary-display-area, .suggested-category-container {
+            background-color: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(107, 114, 128, 0.2);
+            border-radius: 16px;
+            padding: 0.75rem;
+        }
+        .summary-display-area {
+            min-height: 75px; max-height: 150px; overflow-y: auto; font-size: 0.875rem; line-height: 1.25rem; white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex items-center justify-center min-h-screen">
+<canvas id="stars-container"></canvas>
+
+<div id="pageLoadingState" class="loading-full-page hidden">
+    <div class="spinner rounded-full"></div>
+    <p class="mt-3 text-slate-300 text-lg">Loading Editor...</p>
+</div>
+
+<div id="formContent" class="form-container w-full max-w-2xl p-6 md:p-10 hidden main-content-area">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl md:text-3xl font-semibold text-purple-300" id="formTitle">Add New Note</h1>
+        <a href="/dashboard.html" id="backToDashboardLink" class="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <form id="noteForm" class="space-y-6">
+        <div>
+            <label for="noteTitle" class="block text-sm font-medium label-text mb-1.5">Title</label>
+            <input type="text" id="noteTitle" name="noteTitle" class="form-input w-full p-2.5 text-sm" placeholder="Enter note title (e.g., AI Ethics Chapter 3)" required>
+        </div>
+
+        <div>
+            <label for="noteSubject" class="block text-sm font-medium label-text mb-1.5">Subject / Category</label>
+            <select id="noteSubject" name="noteSubject" class="select-field w-full p-2.5 text-sm appearance-none">
+                <option value="" disabled selected>Select a subject</option>
+            </select>
+            <div id="suggestedCategorySection" class="suggested-category-container hidden mt-2">
+                <p class="text-xs text-sky-300 mb-1.5">AI Suggestion: <span id="suggestedCategoryName" class="font-semibold"></span></p>
+                <button type="button" id="createSuggestedSubjectBtn" class="btn-secondary btn-small flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Create & Select
+                    <div id="createSubjectSpinner" class="spinner rounded-full border-2 border-t-transparent hidden ml-1.5"></div>
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <label for="noteContent" class="block text-sm font-medium label-text mb-1.5">Full Note Content</label>
+            <textarea id="noteContent" name="noteContent" rows="10" class="textarea-field w-full p-2.5 text-sm" placeholder="Start typing your note here..." required></textarea>
+        </div>
+
+        <div class="border-t border-slate-700/50 pt-5 space-y-4">
+            <div>
+                <div class="flex justify-between items-center">
+                    <label class="block text-sm font-medium label-text mb-1.5">AI Assistant</label>
+                    <p id="aiNote" class="text-xs text-amber-400/80 hidden">Save note to enable AI features</p>
+                </div>
+                <div class="flex items-center space-x-3 mt-1.5">
+                    <button type="button" id="summarizeBtn" class="ai-button flex-1 px-4 py-2 text-xs font-medium flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                        <span id="summarizeBtnText">Summarize</span>
+                        <div id="summarizeSpinner" class="spinner rounded-full border-2 border-t-transparent hidden"></div>
+                    </button>
+                    <button type="button" id="categorizeBtn" class="ai-button flex-1 px-4 py-2 text-xs font-medium flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.481.398.624 1.023.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.075.124a6.57 6.57 0 01-.22.127c-.332.185-.582.496-.645.87l-.213 1.281c-.09.543-.56.94-1.11.94h-2.593c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.003-.827c.293-.24.438.613-.438.995s-.145-.755-.438-.995l-1.003-.827a1.125 1.125 0 01-.26-1.431l1.296 2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.075.124.073-.044.146-.087.22-.127.332-.185.582.496.645-.87l.213-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span id="categorizeBtnText">Auto-Categorize</span>
+                        <div id="categorizeSpinner" class="spinner rounded-full border-2 border-t-transparent hidden"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label for="aiSummaryOutput" class="block text-sm font-medium label-text mb-1.5">AI Generated Summary</label>
+                <div id="aiSummaryOutput" class="summary-display-area">
+                    No summary generated yet.
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="text-sm text-center pt-2 min-h-[1.25rem]"></div>
+
+        <div class="pt-4 flex flex-col sm:flex-row sm:justify-end sm:space-x-3 space-y-3 sm:space-y-0">
+            <button type="button" id="cancelBtn" class="btn-secondary w-full sm:w-auto px-6 py-2.5 text-sm font-medium">
+                Cancel
+            </button>
+            <button type="submit" id="saveNoteBtn" class="form-button w-full sm:w-auto px-6 py-2.5 text-sm font-medium flex items-center justify-center gap-2">
+                <span id="saveBtnText">Save Note</span>
+                <div id="saveSpinner" class="spinner rounded-full border-2 border-t-transparent hidden"></div>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // --- SCRIPT MODIFIED AS PER REQUEST ---
+    const formTitleEl = document.getElementById('formTitle');
+    const noteFormEl = document.getElementById('noteForm');
+    const noteTitleInputEl = document.getElementById('noteTitle');
+    const noteSubjectSelectEl = document.getElementById('noteSubject');
+    const noteContentInputEl = document.getElementById('noteContent');
+    const aiSummaryOutputEl = document.getElementById('aiSummaryOutput');
+    const aiNoteEl = document.getElementById('aiNote');
+
+    const suggestedCategorySectionEl = document.getElementById('suggestedCategorySection');
+    const suggestedCategoryNameEl = document.getElementById('suggestedCategoryName');
+    const createSuggestedSubjectBtnEl = document.getElementById('createSuggestedSubjectBtn');
+    const createSubjectSpinnerEl = document.getElementById('createSubjectSpinner');
+
+    const saveNoteBtnEl = document.getElementById('saveNoteBtn');
+    const saveBtnTextEl = document.getElementById('saveBtnText');
+    const saveSpinnerEl = document.getElementById('saveSpinner');
+    const cancelBtnEl = document.getElementById('cancelBtn');
+    const statusMessageEl = document.getElementById('statusMessage');
+
+    const summarizeBtnEl = document.getElementById('summarizeBtn');
+    const summarizeBtnTextEl = document.getElementById('summarizeBtnText');
+    const summarizeSpinnerEl = document.getElementById('summarizeSpinner');
+    const categorizeBtnEl = document.getElementById('categorizeBtn');
+    const categorizeBtnTextEl = document.getElementById('categorizeBtnText');
+    const categorizeSpinnerEl = document.getElementById('categorizeSpinner');
+
+    const pageLoadingStateEl = document.getElementById('pageLoadingState');
+    const formContentEl = document.getElementById('formContent');
+
+    let currentNoteId = null;
+    let originalNoteData = {};
+    let isNewNote = true;
+    let summaryGeneratedThisSession = false;
+    let currentSuggestedNewCategoryName = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        currentNoteId = params.get('noteId');
+        isNewNote = !currentNoteId;
+        summaryGeneratedThisSession = false;
+        initializeNoteEditorPage();
+        initializeStarsAnimation();
+    });
+
+    async function initializeNoteEditorPage() {
+        showPageLoading(true);
+        suggestedCategorySectionEl.classList.add('hidden');
+        try {
+            await loadSubjects();
+            if (currentNoteId) {
+                formTitleEl.textContent = 'Edit Note';
+                saveBtnTextEl.textContent = 'Update Note';
+                isNewNote = false;
+                aiNoteEl.classList.add('hidden');
+                await loadNoteForEditing(currentNoteId);
+            } else {
+                formTitleEl.textContent = 'Add New Note';
+                saveBtnTextEl.textContent = 'Save Note';
+                isNewNote = true;
+                originalNoteData = { title: '', content: '', subjectId: '', summary: '' };
+                aiSummaryOutputEl.textContent = 'No summary generated yet.';
+                summarizeBtnEl.disabled = true;
+                categorizeBtnEl.disabled = true;
+                aiNoteEl.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error("Error initializing page:", error);
+            showStatusMessage("Error loading page data: " + error.message, 'error', true);
+        } finally {
+            showPageLoading(false);
+        }
+    }
+
+    function showPageLoading(isLoading) {
+        pageLoadingStateEl.classList.toggle('hidden', !isLoading);
+        formContentEl.classList.toggle('hidden', isLoading);
+    }
+
+    async function loadSubjects() {
+        try {
+            const response = await fetch('/api/subjects');
+            if (!response.ok) throw new Error('Failed to load subjects.');
+            const subjects = await response.json();
+            populateSubjectDropdown(subjects);
+        } catch (error) {
+            console.error("Error loading subjects:", error);
+            showStatusMessage('Error loading subjects for dropdown.', 'error');
+        }
+    }
+
+    function populateSubjectDropdown(subjects) {
+        const previouslySelectedSubject = noteSubjectSelectEl.value;
+        noteSubjectSelectEl.innerHTML = '<option value="" disabled selected>Select a subject</option>';
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            noteSubjectSelectEl.appendChild(option);
+        });
+        if (previouslySelectedSubject && Array.from(noteSubjectSelectEl.options).some(opt => opt.value === previouslySelectedSubject)) {
+            noteSubjectSelectEl.value = previouslySelectedSubject;
+        }
+    }
+
+    async function loadNoteForEditing(id) {
+        try {
+            const response = await fetch(`/api/notes/${id}`);
+            if (!response.ok) throw new Error(`Note with ID ${id} not found.`);
+            const note = await response.json();
+            noteTitleInputEl.value = note.title || '';
+            noteContentInputEl.value = note.content || '';
+            noteSubjectSelectEl.value = note.subject ? note.subject.id : "";
+            aiSummaryOutputEl.textContent = note.summary || 'No summary generated yet.';
+            originalNoteData = {
+                title: note.title || '',
+                content: note.content || '',
+                subjectId: note.subject ? note.subject.id.toString() : '',
+                summary: note.summary || ''
+            };
+            summarizeBtnEl.disabled = false;
+            categorizeBtnEl.disabled = false;
+            aiNoteEl.classList.add('hidden');
+        } catch (error) {
+            console.error("Error loading note:", error);
+            showStatusMessage(error.message, 'error', true);
+            saveNoteBtnEl.disabled = true;
+        }
+    }
+
+    function setButtonLoadingState(buttonEl, textEl, spinnerEl, isLoading) {
+        buttonEl.disabled = isLoading;
+        if(textEl) textEl.classList.toggle('hidden', isLoading);
+        if(spinnerEl) spinnerEl.classList.toggle('hidden', !isLoading);
+    }
+
+    function showStatusMessage(message, type = 'info') {
+        statusMessageEl.textContent = message;
+        statusMessageEl.className = 'text-sm text-center pt-2 min-h-[1.25rem]';
+        if (type === 'success') statusMessageEl.classList.add('text-green-400');
+        else if (type === 'error') statusMessageEl.classList.add('text-red-400');
+        else statusMessageEl.classList.add('text-slate-400');
+    }
+
+    noteFormEl.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        showStatusMessage('');
+        suggestedCategorySectionEl.classList.add('hidden');
+
+        const title = noteTitleInputEl.value.trim();
+        const content = noteContentInputEl.value.trim();
+        const subjectId = noteSubjectSelectEl.value;
+
+        if (!title || !content) {
+            showStatusMessage('Title and Content cannot be empty.', 'error'); return;
+        }
+
+        const noteData = { title, content, subjectId: subjectId ? parseInt(subjectId) : null };
+        if (summaryGeneratedThisSession) {
+            noteData.summary = aiSummaryOutputEl.textContent;
+        }
+
+        setButtonLoadingState(saveNoteBtnEl, saveBtnTextEl, saveSpinnerEl, true);
+        const actionText = isNewNote ? 'Saving' : 'Updating';
+        showStatusMessage(`${actionText} note...`, 'info');
+
+        const wasNewNote = isNewNote;
+
+        const url = isNewNote ? '/api/notes' : `/api/notes/${currentNoteId}`;
+        const method = isNewNote ? 'POST' : 'PUT';
+
+        try {
+            const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteData) });
+            const responseData = await response.json();
+            if (!response.ok) throw new Error(responseData.message || `Failed to ${actionText} note.`);
+
+            const successMessageAction = wasNewNote ? 'created' : 'updated';
+
+            if (wasNewNote) {
+                isNewNote = false;
+                currentNoteId = responseData.id;
+                window.history.replaceState(null, '', `?noteId=${currentNoteId}`);
+                formTitleEl.textContent = 'Edit Note';
+                saveBtnTextEl.textContent = 'Update Note';
+                summarizeBtnEl.disabled = false;
+                categorizeBtnEl.disabled = false;
+                aiNoteEl.classList.add('hidden');
+                showStatusMessage(`Note successfully ${successMessageAction}! You can now use AI features.`, 'success');
+            } else {
+                showStatusMessage(`Note successfully ${successMessageAction}! Redirecting...`, 'success');
+                setTimeout(() => window.location.href = '/dashboard.html', 1500);
+            }
+
+            originalNoteData = { title, content, subjectId: subjectId ? subjectId.toString() : '', summary: responseData.summary || noteData.summary || '' };
+            summaryGeneratedThisSession = false;
+
+        } catch (error) {
+            showStatusMessage(error.message, 'error');
+        } finally {
+            setButtonLoadingState(saveNoteBtnEl, saveBtnTextEl, saveSpinnerEl, false);
+        }
+    });
+
+    cancelBtnEl.addEventListener('click', () => { window.location.href = '/dashboard.html'; });
+
+    async function handleAiFeature(buttonEl, textEl, spinnerEl, apiEndpoint, candidateLabels, updateFunction) {
+        const noteContentValue = noteContentInputEl.value.trim();
+        if (!noteContentValue) {
+            showStatusMessage('Note content is required for AI features.', 'error');
+            return;
+        }
+        setButtonLoadingState(buttonEl, textEl, spinnerEl, true);
+
+        try {
+            const noteTitleValue = noteTitleInputEl.value.trim();
+            const requestBody = {
+                title: noteTitleValue,
+                text: noteContentValue,
+                candidate_labels: candidateLabels
+            };
+
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(requestBody)
+            });
+            const responseData = await response.json();
+            if (!response.ok) throw new Error(responseData.message || 'AI feature failed.');
+            updateFunction(responseData);
+        } catch (error) {
+            showStatusMessage(error.message, 'error');
+        } finally {
+            setButtonLoadingState(buttonEl, textEl, spinnerEl, false);
+        }
+    }
+
+    summarizeBtnEl.addEventListener('click', () => {
+        if (isNewNote) {
+            showStatusMessage('Please save the note before summarizing.', 'error');
+            return;
+        }
+        handleAiFeature(summarizeBtnEl, summarizeBtnTextEl, summarizeSpinnerEl, `/api/notes/${currentNoteId}/summarize`, [], (result) => {
+            aiSummaryOutputEl.textContent = result.summary || 'AI could not generate a summary.';
+            summaryGeneratedThisSession = true;
+            showStatusMessage('Summary generated! Save the note to keep it.', 'success');
+        });
+    });
+
+    categorizeBtnEl.addEventListener('click', () => {
+        if (isNewNote) {
+            showStatusMessage('Please save the note before categorizing.', 'error');
+            return;
+        }
+
+        // CORRECTED LOGIC: Always use the default list for suggestions, regardless of user's existing subjects.
+        const candidateLabels = ['Technology', 'Science', 'Health', 'Finance', 'Education', 'Art', 'History', 'Philosophy', 'Personal', 'Business', 'Ideas'];
+
+        handleAiFeature(categorizeBtnEl, categorizeBtnTextEl, categorizeSpinnerEl, `/api/ai/suggest-category`, candidateLabels, (result) => {
+            suggestedCategorySectionEl.classList.add('hidden');
+            if (result.isExisting && result.subjectId) {
+                noteSubjectSelectEl.value = result.subjectId;
+                showStatusMessage(`AI suggested existing category: "${result.subjectName}".`, 'info');
+            } else if (result.suggestedCategoryName) {
+                currentSuggestedNewCategoryName = result.suggestedCategoryName;
+                suggestedCategoryNameEl.textContent = result.suggestedCategoryName;
+                suggestedCategorySectionEl.classList.remove('hidden');
+            } else {
+                showStatusMessage(result.message || 'AI could not determine a category.', 'warning');
+            }
+        });
+    });
+
+    createSuggestedSubjectBtnEl.addEventListener('click', async () => {
+        if (!currentSuggestedNewCategoryName) return;
+        setButtonLoadingState(createSuggestedSubjectBtnEl, null, createSubjectSpinnerEl, true);
+        try {
+            const response = await fetch('/api/subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: currentSuggestedNewCategoryName })
+            });
+            const newSubject = await response.json();
+            if (!response.ok) throw new Error(newSubject.message || 'Failed to create subject.');
+
+            showStatusMessage(`Subject "${newSubject.name}" created!`, 'success');
+            suggestedCategorySectionEl.classList.add('hidden');
+            await loadSubjects();
+            noteSubjectSelectEl.value = newSubject.id;
+        } catch (error) {
+            showStatusMessage(error.message, 'error');
+        } finally {
+            setButtonLoadingState(createSuggestedSubjectBtnEl, null, createSubjectSpinnerEl, false);
+        }
+    });
+
+    function initializeStarsAnimation() {
+        const canvas = document.getElementById('stars-container');
+        if (!canvas || !canvas.getContext) return;
+        const ctx = canvas.getContext('2d');
+        let mouse = { x: null, y: null, radius: 150 };
+        let particles = [];
+        let animationFrameId;
+
+        function setCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.2;
+                this.speedY = (Math.random() - 0.5) * 0.2;
+                this.baseColor = 'rgba(167, 139, 250, 0.5)';
+            }
+            update() {
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+                this.x += this.speedX;
+                this.y += this.speedY;
+            }
+            draw() {
+                ctx.fillStyle = this.baseColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            let numberOfParticles = (canvas.width * canvas.height) / 12000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function connectParticles() {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let distance = Math.sqrt(Math.pow(particles[a].x - particles[b].x, 2) + Math.pow(particles[a].y - particles[b].y, 2));
+                    if (distance < 120) {
+                        opacityValue = 1 - (distance / 120);
+                        ctx.strokeStyle = `rgba(139, 92, 246, ${opacityValue * 0.5})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            if (mouse.x !== null && mouse.y !== null) {
+                for (let i = 0; i < particles.length; i++) {
+                    let distance = Math.sqrt(Math.pow(mouse.x - particles[i].x, 2) + Math.pow(mouse.y - particles[i].y, 2));
+                    if (distance < mouse.radius) {
+                        opacityValue = 1 - (distance / mouse.radius);
+                        ctx.strokeStyle = `rgba(34, 211, 238, ${opacityValue * 0.8})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(mouse.x, mouse.y);
+                        ctx.lineTo(particles[i].x, particles[i].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            connectParticles();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function initAnimation() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            setCanvasSize();
+            initParticles();
+            animate();
+        }
+
+        window.addEventListener('resize', initAnimation);
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        initAnimation();
+    }
+</script>
+</body>
+</html>

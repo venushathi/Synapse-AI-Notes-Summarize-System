@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Synapse AI Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #E5E7EB;
+        }
+
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .main-content-area {
+            animation: fadeInPage 0.6s ease-out forwards;
+        }
+        @keyframes fadeInPage {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-container {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+        .form-container:hover {
+            border-color: rgba(167, 139, 250, 0.5);
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.25);
+        }
+
+        .form-input {
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            color: #e5e7eb;
+            transition: all 0.3s ease;
+            border-radius: 25px;
+        }
+        .form-input:focus {
+            border-color: #A78BFA;
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+            background-color: rgba(30, 41, 59, 0.8);
+            outline: none;
+        }
+        .form-input:read-only {
+            background-color: rgba(55, 65, 81, 0.4);
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .form-input::placeholder {
+            color: #6B7280;
+        }
+
+        .form-button {
+            background: linear-gradient(145deg, #8B5CF6, #6D28D9);
+            color: white;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+            border-radius: 25px;
+        }
+        .form-button:disabled {
+            background: #374151;
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+        .form-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 30px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-secondary {
+            background-color: rgba(55, 65, 81, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            transition: all 0.2s ease;
+            border-radius: 25px;
+        }
+        .btn-secondary:hover {
+            background-color: rgba(71, 85, 105, 0.7);
+            border-color: rgba(100, 116, 139, 0.7);
+        }
+
+        .label-text { color: #9ca3af; }
+        .spinner {
+            border-top-color: #c7d2fe;
+            animation: spin 1s linear infinite;
+            width: 1rem;
+            height: 1rem;
+            border-width: 2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-full-page {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-full-page .spinner {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-width: 4px;
+            border-top-color: #8B5CF6;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex items-center justify-center min-h-screen">
+<canvas id="stars-container"></canvas>
+
+<div id="pageLoadingState" class="loading-full-page hidden">
+    <div class="spinner rounded-full"></div>
+    <p class="mt-3 text-slate-300 text-lg">Loading Profile...</p>
+</div>
+
+<div id="formContent" class="form-container w-full max-w-xl p-6 md:p-10 hidden main-content-area">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl md:text-3xl font-semibold text-purple-300" id="formTitle">Edit Profile</h1>
+        <a href="/profile.html" id="backToProfileLink" class="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back to Profile
+        </a>
+    </div>
+
+    <form id="editProfileForm" class="space-y-6">
+        <div>
+            <label for="userName" class="block text-sm font-medium label-text mb-1.5">Full Name</label>
+            <input type="text" id="userName" name="name" class="form-input w-full p-2.5 text-sm" placeholder="Your full name" required>
+        </div>
+
+        <div>
+            <label for="userEmail" class="block text-sm font-medium label-text mb-1.5">Email Address</label>
+            <input type="email" id="userEmail" name="email" class="form-input w-full p-2.5 text-sm" readonly>
+            <p class="text-xs text-slate-500 mt-1">Email address cannot be changed.</p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-700/50">
+            <h3 class="text-lg font-medium label-text mb-3 text-slate-300">Change Password</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="currentPassword" class="block text-sm font-medium label-text mb-1.5">Current Password</label>
+                    <input type="password" id="currentPassword" name="currentPassword" class="form-input w-full p-2.5 text-sm" placeholder="Enter your current password">
+                </div>
+                <div>
+                    <label for="newPassword" class="block text-sm font-medium label-text mb-1.5">New Password</label>
+                    <input type="password" id="newPassword" name="newPassword" class="form-input w-full p-2.5 text-sm" placeholder="New password (min. 6 characters)">
+                </div>
+                <div>
+                    <label for="confirmNewPassword" class="block text-sm font-medium label-text mb-1.5">Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" name="confirmNewPassword" class="form-input w-full p-2.5 text-sm" placeholder="Re-enter new password">
+                </div>
+                <p class="text-xs text-slate-500">Leave password fields blank to keep your current password.</p>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="text-sm text-center pt-2 min-h-[1.25rem]"></div>
+
+        <div class="pt-4 flex flex-col sm:flex-row sm:justify-end sm:space-x-3 space-y-3 sm:space-y-0">
+            <button type="button" id="cancelBtn" class="btn-secondary w-full sm:w-auto px-6 py-2.5 text-sm font-medium">
+                Cancel
+            </button>
+            <button type="submit" id="saveChangesBtn" class="form-button w-full sm:w-auto px-6 py-2.5 text-sm font-medium flex items-center justify-center gap-2">
+                <span id="saveBtnText">Save Changes</span>
+                <div id="saveSpinner" class="spinner rounded-full border-2 border-t-transparent hidden"></div>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // --- ORIGINAL SCRIPT (UNCHANGED LOGIC) ---
+    const editProfileFormEl = document.getElementById('editProfileForm');
+    const userNameInputEl = document.getElementById('userName');
+    const userEmailInputEl = document.getElementById('userEmail');
+    const currentPasswordInputEl = document.getElementById('currentPassword');
+    const newPasswordInputEl = document.getElementById('newPassword');
+    const confirmNewPasswordInputEl = document.getElementById('confirmNewPassword');
+
+    const saveChangesBtnEl = document.getElementById('saveChangesBtn');
+    const saveBtnTextEl = document.getElementById('saveBtnText');
+    const saveSpinnerEl = document.getElementById('saveSpinner');
+    const cancelBtnEl = document.getElementById('cancelBtn');
+    const statusMessageEl = document.getElementById('statusMessage');
+    const pageLoadingStateEl = document.getElementById('pageLoadingState');
+    const formContentEl = document.getElementById('formContent');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeEditProfilePage();
+        initializeStarsAnimation();
+    });
+
+    async function initializeEditProfilePage() {
+        pageLoadingStateEl.classList.remove('hidden');
+        formContentEl.classList.add('hidden');
+        try {
+            const response = await fetch('/api/user/profile');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to load profile data. Please try logging in again.' }));
+                throw new Error(errorData.message);
+            }
+            const userData = await response.json();
+            populateForm(userData);
+            formContentEl.classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading profile data:', error);
+            // Display error in a more prominent way if the form can't load
+            formContentEl.innerHTML = `<div class="text-center text-red-400 p-8">${error.message}</div>`;
+            formContentEl.classList.remove('hidden');
+        } finally {
+            pageLoadingStateEl.classList.add('hidden');
+        }
+    }
+
+    function populateForm(userData) {
+        userNameInputEl.value = userData.name || '';
+        userEmailInputEl.value = userData.email || '';
+        // Password fields are intentionally left blank for security
+    }
+
+    function setSavingState(isSaving) {
+        saveChangesBtnEl.disabled = isSaving;
+        saveBtnTextEl.classList.toggle('hidden', isSaving);
+        saveSpinnerEl.classList.toggle('hidden', !isSaving);
+    }
+
+    function showStatusMessage(message, type = 'info') {
+        statusMessageEl.textContent = message;
+        statusMessageEl.className = 'text-sm text-center pt-2 min-h-[1.25rem]'; // Reset classes
+        if (type === 'success') {
+            statusMessageEl.classList.add('text-green-400');
+        } else if (type === 'error') {
+            statusMessageEl.classList.add('text-red-400');
+        } else {
+            statusMessageEl.classList.add('text-slate-400');
+        }
+    }
+
+    editProfileFormEl.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        showStatusMessage('');
+
+        const name = userNameInputEl.value.trim();
+        const currentPassword = currentPasswordInputEl.value;
+        const newPassword = newPasswordInputEl.value;
+        const confirmNewPassword = confirmNewPasswordInputEl.value;
+
+        if (!name) {
+            showStatusMessage('Full name is required.', 'error');
+            return;
+        }
+
+        const updateData = { name };
+
+        // Password validation logic, only if any password field is touched
+        if (currentPassword || newPassword || confirmNewPassword) {
+            if (!currentPassword) {
+                showStatusMessage('Current password is required to set a new password.', 'error');
+                return;
+            }
+            if (!newPassword) {
+                showStatusMessage('New password is required.', 'error');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showStatusMessage('New password must be at least 6 characters long.', 'error');
+                return;
+            }
+            if (newPassword !== confirmNewPassword) {
+                showStatusMessage('New passwords do not match.', 'error');
+                return;
+            }
+            updateData.currentPassword = currentPassword;
+            updateData.newPassword = newPassword;
+        }
+
+        setSavingState(true);
+        showStatusMessage('Saving changes...', 'info');
+
+        try {
+            const response = await fetch('/api/user/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(responseData.message || 'Failed to update profile.');
+            }
+            showStatusMessage('Profile updated successfully!', 'success');
+
+            if (currentPassword) { // Clear password fields only if a change was successful
+                currentPasswordInputEl.value = '';
+                newPasswordInputEl.value = '';
+                confirmNewPasswordInputEl.value = '';
+            }
+
+            setTimeout(() => {
+                window.location.href = '/profile.html';
+            }, 1500);
+        } catch (error) {
+            showStatusMessage(error.message, 'error');
+        } finally {
+            setSavingState(false);
+        }
+    });
+
+    cancelBtnEl.addEventListener('click', () => {
+        window.location.href = '/profile.html';
+    });
+
+    function initializeStarsAnimation() {
+        const canvas = document.getElementById('stars-container');
+        if (!canvas || !canvas.getContext) return;
+
+        const ctx = canvas.getContext('2d');
+        let mouse = { x: null, y: null, radius: 150 };
+        let particles = [];
+        let animationFrameId;
+
+        function setCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.2;
+                this.speedY = (Math.random() - 0.5) * 0.2;
+                this.baseColor = 'rgba(167, 139, 250, 0.5)';
+            }
+            update() {
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+                this.x += this.speedX;
+                this.y += this.speedY;
+            }
+            draw() {
+                ctx.fillStyle = this.baseColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            let numberOfParticles = (canvas.width * canvas.height) / 12000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function connectParticles() {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let distance = Math.sqrt(Math.pow(particles[a].x - particles[b].x, 2) + Math.pow(particles[a].y - particles[b].y, 2));
+                    if (distance < 120) {
+                        opacityValue = 1 - (distance / 120);
+                        ctx.strokeStyle = `rgba(139, 92, 246, ${opacityValue * 0.5})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            if (mouse.x !== null && mouse.y !== null) {
+                for (let i = 0; i < particles.length; i++) {
+                    let distance = Math.sqrt(Math.pow(mouse.x - particles[i].x, 2) + Math.pow(mouse.y - particles[i].y, 2));
+                    if (distance < mouse.radius) {
+                        opacityValue = 1 - (distance / mouse.radius);
+                        ctx.strokeStyle = `rgba(34, 211, 238, ${opacityValue * 0.8})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(mouse.x, mouse.y);
+                        ctx.lineTo(particles[i].x, particles[i].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            connectParticles();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function initAnimation() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            setCanvasSize();
+            initParticles();
+            animate();
+        }
+
+        window.addEventListener('resize', initAnimation);
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        initAnimation();
+    }
+</script>
+</body>
+</html>
