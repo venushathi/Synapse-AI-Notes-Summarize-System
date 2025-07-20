@@ -50,7 +50,7 @@ To get a local copy up and running, follow these simple steps.
 
 1.  **Clone the repository:**
     ```sh
-    git clone [https://github.com/venushathi/synapse-ai-notes-app.git](https://github.com/venushathi/synapse-ai-notes-app.git)
+    git clone [https://github.com/venushathi/synapse-ai-notes-app.git]
     cd synapse-ai-notes-app
     ```
    
